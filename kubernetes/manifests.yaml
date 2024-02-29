@@ -11,7 +11,9 @@ spec:
     app: wordpress
     tier: mysql
   clusterIP: None
+
 ---
+
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -24,8 +26,10 @@ spec:
   resources:
     requests:
       storage: 20Gi
+
 ---
-apiVersion: apps/v1 # for k8s versions before 1.9.0 use apps/v1beta2  and before 1.8.0 use extensions/v1beta1
+
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: wordpress-mysql
@@ -45,28 +49,30 @@ spec:
         tier: mysql
     spec:
       containers:
-      - image: mysql:5.6
-        name: mysql
-        env:
-        - name: MYSQL_ROOT_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: mysql-pass
-              key: password
-        livenessProbe:
-          tcpSocket:
-            port: 3306
-        ports:
-        - containerPort: 3306
+        - image: mysql:5.6
           name: mysql
-        volumeMounts:
-        - name: mysql-persistent-storage
-          mountPath: /var/lib/mysql
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-pass
+                  key: password
+          livenessProbe:
+            tcpSocket:
+              port: 3306
+          ports:
+            - containerPort: 3306
+              name: mysql
+          volumeMounts:
+            - name: mysql-persistent-storage
+              mountPath: /var/lib/mysql
       volumes:
-      - name: mysql-persistent-storage
-        persistentVolumeClaim:
-          claimName: mysql-pv-claim
+        - name: mysql-persistent-storage
+          persistentVolumeClaim:
+            claimName: mysql-pv-claim
+
 ---
+
 apiVersion: v1
 kind: Service
 metadata:
@@ -80,7 +86,9 @@ spec:
     app: wordpress
     tier: frontend
   type: LoadBalancer
+
 ---
+
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -93,8 +101,10 @@ spec:
   resources:
     requests:
       storage: 20Gi
+
 ---
-apiVersion: apps/v1 #  for k8s versions before 1.9.0 use apps/v1beta2  and before 1.8.0 use extensions/v1beta1
+
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: wordpress
@@ -114,27 +124,29 @@ spec:
         tier: frontend
     spec:
       containers:
-      - image: wordpress:4.8-apache
-        name: wordpress
-        env:
-        - name: WORDPRESS_DB_HOST
-          value: wordpress-mysql
-        - name: WORDPRESS_DB_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: mysql-pass
-              key: password
-        ports:
-        - containerPort: 80
+        - image: wordpress:4.8-apache
           name: wordpress
-        volumeMounts:
-        - name: wordpress-persistent-storage
-          mountPath: /var/www/html
+          env:
+            - name: WORDPRESS_DB_HOST
+              value: wordpress-mysql
+            - name: WORDPRESS_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-pass
+                  key: password
+          ports:
+            - containerPort: 80
+              name: wordpress
+          volumeMounts:
+            - name: wordpress-persistent-storage
+              mountPath: /var/www/html
       volumes:
-      - name: wordpress-persistent-storage
-        persistentVolumeClaim:
-          claimName: wp-pv-claim
+        - name: wordpress-persistent-storage
+          persistentVolumeClaim:
+            claimName: wp-pv-claim
+
 ---
+
 apiVersion: v1
 kind: PersistentVolume
 metadata:
@@ -147,7 +159,9 @@ spec:
   gcePersistentDisk:
     pdName: wordpress-1
     fsType: ext4
+
 ---
+
 apiVersion: v1
 kind: PersistentVolume
 metadata:
@@ -160,7 +174,3 @@ spec:
   gcePersistentDisk:
     pdName: wordpress-2
     fsType: ext4
-
-
-
-          
