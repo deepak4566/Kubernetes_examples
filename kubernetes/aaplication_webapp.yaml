@@ -2,6 +2,7 @@ apiVersion: v1
 kind: Namespace
 metadata:
   name: istio-system
+
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -17,6 +18,7 @@ spec:
   destination:
     server: "https://kubernetes.default.svc"
     namespace: istio-system
+
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -32,6 +34,7 @@ spec:
   destination:
     server: "https://kubernetes.default.svc"
     namespace: istio-system
+
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -58,4 +61,3 @@ spec:
   mtls:
     mode: STRICT
 EOF
-    
