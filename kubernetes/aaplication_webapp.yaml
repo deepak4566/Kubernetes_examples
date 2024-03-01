@@ -52,7 +52,6 @@ spec:
     namespace: istio-system
 
 ---
-kubectl apply -n sock-shop -f - <<EOF
 apiVersion: security.istio.io/v1beta1
 kind: PeerAuthentication
 metadata:
@@ -60,4 +59,4 @@ metadata:
 spec:
   mtls:
     mode: STRICT
-EOF
+
