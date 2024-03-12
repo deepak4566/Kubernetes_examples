@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: maven-vulns
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mavenvulns
+  template:
+    metadata:
+      labels:
+        app: mavenvulns
+    spec:
+      containers:
+      - name: maven-vulns-app
+        image: us-docker.pkg.dev/google-samples/containers/gke/security/maven-vulns
+        # This app listens on port 8080 for web traffic by default.
+        ports:
+        - containerPort: 8080
+        env:
+          - name: PORT
+            value: "8080"
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+            ephemeral-storage: "1Gi"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+            ephemeral-storage: "1Gi"
+
+
