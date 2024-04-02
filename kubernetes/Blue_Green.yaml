@@ -23,7 +23,6 @@ spec:
   - protocol: TCP
     port: 80
     targetPort: 9376
-
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -37,14 +36,37 @@ spec:
       version: blue
   template:
     metadata:
-      labels:app: myapp
-      version: blue
-    spec:containers:
-    - name: myapp
-      image: myapp:1.0.0
-      ports:
-      - containerPort: 8080
-
+      labels:
+        app: myapp
+        version: blue
+    spec:
+      containers:
+      - name: myapp
+        image: myapp:1.0.0
+        ports:
+        - containerPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myapp-green
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: myapp
+      version: green
+  template:
+    metadata:
+      labels:
+        app: myapp
+        version: green
+    spec:
+      containers:
+      - name: myapp
+        image: myapp:1.1.0
+        ports:
+        - containerPort: 8080
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -61,53 +83,11 @@ spec:
             name: myapp-blue
             port:
               number: 80
-
-
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: myapp-green
-spec:
-  replicas: 3
-  selector:
-    matchLabels:
-      app: myapp
-      version: green
-  template:
-    metadata:
-      labels:app: myapp
-      version: green
-    spec:containers:
-    - name: myapp
-      image: myapp:1.1.0
-      ports:
-      - containerPort: 8080
-
-
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: myapp-ingress
-spec:
-  rules:
-  - http:
-      paths:
-      - path: /myapp
-        pathType: Prefix
-        backend:
-          service:
-            name: myapp-green
-            port
-              number: 80
-
----
-
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: myapp-ingress
+  name: myapp-ingress-green
 spec:
   rules:
   - http:
@@ -119,11 +99,3 @@ spec:
             name: myapp-green
             port:
               number: 80
-
-
-              
-              
-
-
-              
-    
