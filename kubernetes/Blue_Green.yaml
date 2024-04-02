@@ -1,85 +1,71 @@
-apiVersion: v1
-kind: Service
-metadata:
-  name: nginx-blue
-spec:
-  selector:
-    app: nginx
-    version: blue
-  ports:
-  - protocol: TCP
-    port: 80
-    targetPort: 80
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: nginx-green
-spec:
-  selector:
-    app: nginx
-    version: green
-  ports:
-  - protocol: TCP
-    port: 80
-    targetPort: 80
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: nginx-blue
-spec:
-  replicas: 3
-  selector:
-    matchLabels:
+services:
+  - name: nginx-blue
+    type: Service
+    selectors:
       app: nginx
       version: blue
-  template:
-    metadata:
-      labels:
-        app: nginx
-        version: blue
-    spec:
-      containers:
-      - name: nginx
-        image: nginx:1.16.1  # Example of an old version of Nginx
-        ports:
-        - containerPort: 80
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: nginx-green
-spec:
-  replicas: 3
-  selector:
-    matchLabels:
+    ports:
+      - protocol: TCP
+        port: 80
+        targetPort: 80
+  - name: nginx-green
+    type: Service
+    selectors:
       app: nginx
       version: green
-  template:
-    metadata:
-      labels:
+    ports:
+      - protocol: TCP
+        port: 80
+        targetPort: 80
+
+deployments:
+  - name: nginx-blue
+    type: Deployment
+    replicas: 3
+    selector:
+      matchLabels:
+        app: nginx
+        version: blue
+    template:
+      metadata:
+        labels:
+          app: nginx
+          version: blue
+      spec:
+        containers:
+          - name: nginx
+            image: nginx:1.16.1
+            ports:
+              - containerPort: 80
+  - name: nginx-green
+    type: Deployment
+    replicas: 3
+    selector:
+      matchLabels:
         app: nginx
         version: green
-    spec:
-      containers:
-      - name: nginx
-        image: nginx:1.21.3  # Example of a new version of Nginx
-        ports:
-        - containerPort: 80
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: nginx-ingress
-spec:
-  rules:
-  - http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: nginx-blue
-            port:
-              number: 80
+    template:
+      metadata:
+        labels:
+          app: nginx
+          version: green
+      spec:
+        containers:
+          - name: nginx
+            image: nginx:1.21.3
+            ports:
+              - containerPort: 80
+
+ingress:
+  - name: nginx-ingress
+    type: Ingress
+    rules:
+      - http:
+          paths:
+            - path: /
+              pathType: Prefix
+              backend:
+                service:
+                  name: nginx-blue
+                  port:
+                    number: 80
