@@ -1,21 +1,20 @@
-apiVersion: autoscaling.k8s.io/v1beta2
-kind: VerticalPodAutoscaler
+ 
+apiVersion: argoproj.io/v1alpha1
+kind: Application
 metadata:
-  name: nginx-vpa
-  namespace: vpa
+  name: 'go-server'
 spec:
-  targetRef:
-    apiVersion: "apps/v1"
-    kind: Deployment
-    name: nginx
-  updatePolicy:
-    updateMode: "Auto"
-  resourcePolicy:
-    containerPolicies:
-    - containerName: "nginx"
-      minAllowed:
-        cpu: "250m"
-        memory: "100Mi"
-      maxAllowed:
-        cpu: "500m"
-        memory: "600Mi"
+  destination:
+    name: 'in-cluster'
+    namespace: 'prod'
+  source:
+    path: 'chart'
+    repoURL: 'https://github.com/RinkiyaKeDad/gitops-sample'
+    targetRevision: HEAD
+    helm:
+      valueFiles:
+      - values.yaml
+  project: 'default'
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
