@@ -27,7 +27,7 @@ spec:
         - containerPort: 8300
           name: server
         - containerPort: 8601
-          name: server-udp
+          name: serverudp
         - containerPort: 8502
           name: grpc
         readinessProbe:
@@ -74,7 +74,7 @@ spec:
     - protocol: UDP
       port: 8601
       targetPort: 8601
-      name: server-udp
+      name: serverudp
     - protocol: TCP
       port: 8502
       targetPort: 8502
