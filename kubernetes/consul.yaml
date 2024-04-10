@@ -1,4 +1,3 @@
-
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -27,8 +26,8 @@ spec:
           name: serfwan
         - containerPort: 8300
           name: server
-        - containerPort: 8600
-          name: server_udp
+        - containerPort: 8601
+          name: server-udp
         - containerPort: 8502
           name: grpc
         readinessProbe:
@@ -73,9 +72,9 @@ spec:
       targetPort: 8300
       name: server
     - protocol: UDP
-      port: 8600
-      targetPort: 8600
-      name: server_udp
+      port: 8601
+      targetPort: 8601
+      name: server-udp
     - protocol: TCP
       port: 8502
       targetPort: 8502
