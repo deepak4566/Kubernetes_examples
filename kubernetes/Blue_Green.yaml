@@ -17,6 +17,9 @@ spec:
       containers:
         - name: datadog-agent
           image: datadog/agent:latest  # Replace 'latest' with a specific version if needed
+          env:
+            - name: DD_API_KEY  # Replace with your Datadog API Key
+              value: "<YOUR_DATADOG_API_KEY>"
           volumeMounts:
             - name: datadog-agent-config
               mountPath: /etc/datadog-agent
@@ -33,18 +36,23 @@ spec:
   selector:
     app: datadog
   ports:
-    - protocol: TCP
+    - name: udp-metrics
+      protocol: UDP
       port: 8125
       targetPort: 8125
-    - protocol: TCP
+    - name: dogstatsd
+      protocol: UDP
       port: 8126
       targetPort: 8126
-    - protocol: TCP
+    - name: trace-agent
+      protocol: TCP
       port: 8127
       targetPort: 8127
-    - protocol: TCP
+    - name: apm-http
+      protocol: TCP
       port: 8128
       targetPort: 8128
-    - protocol: TCP
+    - name: apm-statsd
+      protocol: UDP
       port: 8129
       targetPort: 8129
