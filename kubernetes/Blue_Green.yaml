@@ -17,9 +17,6 @@ spec:
       containers:
         - name: datadog-agent
           image: datadog/agent:latest  # Replace 'latest' with a specific version if needed
-          env:
-            - name: DD_API_KEY  # Replace with your Datadog API Key
-              value: "<YOUR_DATADOG_API_KEY>"
           volumeMounts:
             - name: datadog-agent-config
               mountPath: /etc/datadog-agent
