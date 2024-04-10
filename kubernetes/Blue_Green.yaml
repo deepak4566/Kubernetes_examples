@@ -1,71 +1,53 @@
-services:
-  - name: nginx-blue
-    type: Service
-    selectors:
-      app: nginx
-      version: blue
-    ports:
-      - protocol: TCP
-        port: 80
-        targetPort: 80
-  - name: nginx-green
-    type: Service
-    selectors:
-      app: nginx
-      version: green
-    ports:
-      - protocol: TCP
-        port: 80
-        targetPort: 80
-
-deployments:
-  - name: nginx-blue
-    type: Deployment
-    replicas: 3
-    selector:
-      matchLabels:
-        app: nginx
-        version: blue
-    template:
-      metadata:
-        labels:
-          app: nginx
-          version: blue
-      spec:
-        containers:
-          - name: nginx
-            image: nginx:1.16.1
-            ports:
-              - containerPort: 80
-  - name: nginx-green
-    type: Deployment
-    replicas: 3
-    selector:
-      matchLabels:
-        app: nginx
-        version: green
-    template:
-      metadata:
-        labels:
-          app: nginx
-          version: green
-      spec:
-        containers:
-          - name: nginx
-            image: nginx:1.21.3
-            ports:
-              - containerPort: 80
-
-ingress:
-  - name: nginx-ingress
-    type: Ingress
-    rules:
-      - http:
-          paths:
-            - path: /
-              pathType: Prefix
-              backend:
-                service:
-                  name: nginx-blue
-                  port:
-                    number: 80
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: datadog-agent
+  labels:
+    app: datadog
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: datadog
+  template:
+    metadata:
+      labels:
+        app: datadog
+    spec:
+      containers:
+        - name: datadog-agent
+          image: datadog/agent:latest  # Replace 'latest' with a specific version if needed
+          env:
+            - name: DD_API_KEY  # Replace with your Datadog API Key
+              value: "<YOUR_DATADOG_API_KEY>"
+          volumeMounts:
+            - name: datadog-agent-config
+              mountPath: /etc/datadog-agent
+      volumes:
+        - name: datadog-agent-config
+          configMap:
+            name: datadog-agent-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: datadog-agent-service
+spec:
+  selector:
+    app: datadog
+  ports:
+    - protocol: TCP
+      port: 8125
+      targetPort: 8125
+    - protocol: TCP
+      port: 8126
+      targetPort: 8126
+    - protocol: TCP
+      port: 8127
+      targetPort: 8127
+    - protocol: TCP
+      port: 8128
+      targetPort: 8128
+    - protocol: TCP
+      port: 8129
+      targetPort: 8129
