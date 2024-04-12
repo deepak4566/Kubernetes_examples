@@ -17,7 +17,6 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.2.2
-  name: identityproviders
 spec:
   conversion:
     strategy: None
