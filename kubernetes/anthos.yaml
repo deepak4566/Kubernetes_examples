@@ -1,0 +1,1470 @@
+kind: StatefulSet
+apiVersion: apps/v1
+metadata:
+  name: accounts-db
+  labels:
+    app: accounts-db
+    tier: db
+spec:
+  serviceName: "accounts-db"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: accounts-db
+      tier: db
+  template:
+    metadata:
+      labels:
+        app: accounts-db
+        tier: db
+        version: v0.5.3
+    spec:
+      serviceAccountName: default
+      containers:
+      - name: accounts-db
+        image: gcr.io/bank-of-anthos-ci/accounts-db:v0.5.3
+        envFrom:
+          - configMapRef:
+              name: environment-config
+          - configMapRef:
+              name: accounts-db-config
+          - configMapRef:
+              name: demo-data-config
+        ports:
+          - containerPort: 5432
+            name: postgredb
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 1Gi
+        volumeMounts:
+        - name: postgresdb
+          mountPath: /var/lib/postgresql/data
+          subPath: postgres
+      volumes:
+      - name: postgresdb
+        emptyDir: {}
+# [END servicemesh_deployment_manifests_accounts_db_statefulset_accounts_db]
+---
+# [START servicemesh_deployment_manifests_accounts_db_service_accounts_db]
+apiVersion: v1
+kind: Service
+metadata:
+  name: accounts-db
+  labels:
+    app: accounts-db
+    tier: db
+spec:
+  ports:
+    - port: 5432
+      name: tcp
+      targetPort: 5432
+      protocol: TCP
+  selector:
+    app: accounts-db
+    tier: db
+# [END servicemesh_deployment_manifests_accounts_db_service_accounts_db]
+---
+# [START servicemesh_deployment_manifests_accounts_db_configmap_accounts_db_config]
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: accounts-db-config
+  labels:
+    app: accounts-db
+data:
+  POSTGRES_DB: accounts-db
+  POSTGRES_USER: accounts-admin
+  POSTGRES_PASSWORD: accounts-pwd
+  ACCOUNTS_DB_URI: postgresql://accounts-admin:accounts-pwd@accounts-db:5432/accounts-db
+# [END servicemesh_deployment_manifests_accounts_db_configmap_accounts_db_config]
+---
+# [START servicemesh_deployment_manifests_accounts_db_virtualservice_accounts_db]
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: accounts-db
+spec:
+  hosts:
+  - accounts-db
+  tcp:
+  - route:
+    - destination:
+        host: accounts-db
+        subset: v0-5-3
+# [END servicemesh_deployment_manifests_accounts_db_virtualservice_accounts_db]
+---
+# [START servicemesh_deployment_manifests_accounts_db_destinationrule_accounts_db_destination]
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: accounts-db-destination
+spec:
+  host: accounts-db
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL
+  subsets:
+  - name: v0-5-3
+    labels:
+      version: v0.5.3
+# [END servicemesh_deployment_manifests_accounts_db_destinationrule_accounts_db_destination]
+---
+
+
+# Copyright 2021 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# [START servicemesh_deployment_manifests_asm_gateway_gateway_bank_of_anthos_gateway]
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: bank-of-anthos-gateway
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - '*'
+# [END servicemesh_deployment_manifests_asm_gateway_gateway_bank_of_anthos_gateway]
+---
+
+
+# Copyright 2021 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# [START servicemesh_deployment_manifests_balance_reader_deployment_balancereader]
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: balancereader
+spec:
+  selector:
+    matchLabels:
+      app: balancereader
+  template:
+    metadata:
+      labels:
+        app: balancereader
+        version: v0.5.3
+    spec:
+      serviceAccountName: default
+      terminationGracePeriodSeconds: 5
+      containers:
+      - name: balancereader
+        image: gcr.io/bank-of-anthos-ci/balancereader:v0.5.3
+        volumeMounts:
+        - name: publickey
+          mountPath: "/root/.ssh"
+          readOnly: true
+        env:
+        - name: VERSION
+          value: "v0.5.3"
+        - name: PORT
+          value: "8080"
+        # toggle Cloud Trace export
+        - name: ENABLE_TRACING
+          value: "true"
+        - name: ENABLE_METRICS
+          value: "true"
+        - name: POLL_MS
+          value: "100"
+        - name: CACHE_SIZE
+          value: "1000000"
+        # tell Java to obey container memory limits
+        - name: JVM_OPTS
+          value: "-XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap"
+        # Valid levels are debug, info, warn, error, fatal.
+        # If no valid level is set, will default to info.
+        - name: LOG_LEVEL
+          value: "info"
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        envFrom:
+        - configMapRef:
+            name: environment-config
+        # add ledger-db credentials from ConfigMap
+        - configMapRef:
+            name: ledger-db-config
+        resources:
+          requests:
+            cpu: 100m
+            memory: 512Mi
+          limits:
+            cpu: 500m
+            memory: 1Gi
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 5
+          timeoutSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /healthy
+            port: 8080
+          initialDelaySeconds: 120
+          periodSeconds: 5
+          timeoutSeconds: 10
+      volumes:
+      - name: publickey
+        secret:
+          secretName: jwt-key
+          items:
+          - key: jwtRS256.key.pub
+            path: publickey
+# [END servicemesh_deployment_manifests_balance_reader_deployment_balancereader]
+---
+# [START servicemesh_deployment_manifests_balance_reader_service_balancereader]
+apiVersion: v1
+kind: Service
+metadata:
+  name: balancereader
+spec:
+  type: ClusterIP
+  selector:
+    app: balancereader
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+# [END servicemesh_deployment_manifests_balance_reader_service_balancereader]
+---
+# [START servicemesh_deployment_manifests_balance_reader_virtualservice_balancereader]
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: balancereader
+spec:
+  hosts:
+  - balancereader
+  http:
+  - route:
+    - destination:
+        host: balancereader
+        subset: v0-5-3
+# [END servicemesh_deployment_manifests_balance_reader_virtualservice_balancereader]
+---
+# [START servicemesh_deployment_manifests_balance_reader_destinationrule_balancereader_destination]
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: balancereader-destination
+spec:
+  host: balancereader
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL
+  subsets:
+  - name: v0-5-3
+    labels:
+      version: v0.5.3
+# [END servicemesh_deployment_manifests_balance_reader_destinationrule_balancereader_destination]
+---
+
+
+# Copyright 2021 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# [START servicemesh_deployment_manifests_config_configmap_environment_config]
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: environment-config
+data:
+  LOCAL_ROUTING_NUM: "883745000"
+  PUB_KEY_PATH: "/root/.ssh/publickey"
+# [END servicemesh_deployment_manifests_config_configmap_environment_config]
+---
+# [START servicemesh_deployment_manifests_config_configmap_service_api_config]
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: service-api-config
+data:
+  TRANSACTIONS_API_ADDR: "ledgerwriter:8080"
+  BALANCES_API_ADDR: "balancereader:8080"
+  HISTORY_API_ADDR: "transactionhistory:8080"
+  CONTACTS_API_ADDR: "contacts:8080"
+  USERSERVICE_API_ADDR: "userservice:8080"
+# [END servicemesh_deployment_manifests_config_configmap_service_api_config]
+---
+# [START servicemesh_deployment_manifests_config_configmap_default_data_config]
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: demo-data-config
+data:
+  USE_DEMO_DATA: "True"
+  DEMO_LOGIN_USERNAME: "testuser"
+  # All demo user accounts are hardcoded to use the login password 'password'
+  DEMO_LOGIN_PASSWORD: "password"
+# [END servicemesh_deployment_manifests_config_configmap_default_data_config]
+---
+
+
+
+# Copyright 2021 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# [START servicemesh_deployment_manifests_contacts_deployment_contacts]
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: contacts
+spec:
+  selector:
+    matchLabels:
+      app: contacts
+  template:
+    metadata:
+      labels:
+        app: contacts
+        version: v0.5.3
+    spec:
+      serviceAccountName: default
+      terminationGracePeriodSeconds: 5
+      containers:
+      - name: contacts
+        image: gcr.io/bank-of-anthos-ci/contacts:v0.5.3
+        volumeMounts:
+        - name: publickey
+          mountPath: "/root/.ssh"
+          readOnly: true
+        env:
+        - name: VERSION
+          value: "v0.5.3"
+        - name: PORT
+          value: "8080"
+        - name: ENABLE_TRACING
+          value: "true"
+        # Valid levels are debug, info, warning, error, critical.
+        # If no valid level is set, will default to info.
+        - name: LOG_LEVEL
+          value: "info"
+        envFrom:
+        - configMapRef:
+            name: environment-config
+        - configMapRef:
+            name: accounts-db-config
+        resources:
+          requests:
+            cpu: 100m
+            memory: 64Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 10
+      volumes:
+      - name: publickey
+        secret:
+          secretName: jwt-key
+          items:
+          - key: jwtRS256.key.pub
+            path: publickey
+# [END servicemesh_deployment_manifests_contacts_deployment_contacts]
+---
+# [START servicemesh_deployment_manifests_contacts_service_contacts]
+apiVersion: v1
+kind: Service
+metadata:
+  name: contacts
+spec:
+  type: ClusterIP
+  selector:
+    app: contacts
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+# [END servicemesh_deployment_manifests_contacts_service_contacts]
+---
+# [START servicemesh_deployment_manifests_contacts_virtualservice_contacts]
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: contacts
+spec:
+  hosts:
+  - contacts
+  http:
+  - route:
+    - destination:
+        host: contacts
+        subset: v0-5-3
+# [END servicemesh_deployment_manifests_contacts_virtualservice_contacts]
+---
+# [START servicemesh_deployment_manifests_contacts_destinationrule_contacts_destination]
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: contacts-destination
+spec:
+  host: contacts
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL
+  subsets:
+  - name: v0-5-3
+    labels:
+      version: v0.5.3
+# [END servicemesh_deployment_manifests_contacts_destinationrule_contacts_destination]
+---
+
+# Copyright 2021 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# [START servicemesh_deployment_manifests_contacts_deployment_contacts]
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: contacts
+spec:
+  selector:
+    matchLabels:
+      app: contacts
+  template:
+    metadata:
+      labels:
+        app: contacts
+        version: v0.5.3
+    spec:
+      serviceAccountName: default
+      terminationGracePeriodSeconds: 5
+      containers:
+      - name: contacts
+        image: gcr.io/bank-of-anthos-ci/contacts:v0.5.3
+        volumeMounts:
+        - name: publickey
+          mountPath: "/root/.ssh"
+          readOnly: true
+        env:
+        - name: VERSION
+          value: "v0.5.3"
+        - name: PORT
+          value: "8080"
+        - name: ENABLE_TRACING
+          value: "true"
+        # Valid levels are debug, info, warning, error, critical.
+        # If no valid level is set, will default to info.
+        - name: LOG_LEVEL
+          value: "info"
+        envFrom:
+        - configMapRef:
+            name: environment-config
+        - configMapRef:
+            name: accounts-db-config
+        resources:
+          requests:
+            cpu: 100m
+            memory: 64Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 10
+      volumes:
+      - name: publickey
+        secret:
+          secretName: jwt-key
+          items:
+          - key: jwtRS256.key.pub
+            path: publickey
+# [END servicemesh_deployment_manifests_contacts_deployment_contacts]
+---
+# [START servicemesh_deployment_manifests_contacts_service_contacts]
+apiVersion: v1
+kind: Service
+metadata:
+  name: contacts
+spec:
+  type: ClusterIP
+  selector:
+    app: contacts
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+# [END servicemesh_deployment_manifests_contacts_service_contacts]
+---
+# [START servicemesh_deployment_manifests_contacts_virtualservice_contacts]
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: contacts
+spec:
+  hosts:
+  - contacts
+  http:
+  - route:
+    - destination:
+        host: contacts
+        subset: v0-5-3
+# [END servicemesh_deployment_manifests_contacts_virtualservice_contacts]
+---
+# [START servicemesh_deployment_manifests_contacts_destinationrule_contacts_destination]
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: contacts-destination
+spec:
+  host: contacts
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL
+  subsets:
+  - name: v0-5-3
+    labels:
+      version: v0.5.3
+# [END servicemesh_deployment_manifests_contacts_destinationrule_contacts_destination]
+---
+
+
+# Copyright 2021 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# [START servicemesh_deployment_manifests_ledger_db_statefulset_ledger_db]
+kind: StatefulSet
+apiVersion: apps/v1
+metadata:
+  name: ledger-db
+spec:
+  serviceName: "ledger-db"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ledger-db
+  template:
+    metadata:
+      labels:
+        app: ledger-db
+        version: v0.5.3
+    spec:
+      serviceAccountName: default
+      containers:
+        - name: postgres
+          image: gcr.io/bank-of-anthos-ci/ledger-db:v0.5.3
+          ports:
+            - containerPort: 5432
+          envFrom:
+            - configMapRef:
+                name: environment-config
+            - configMapRef:
+                name: ledger-db-config
+            - configMapRef:
+                name: demo-data-config
+          resources:
+            requests:
+              cpu: 100m
+              memory: 512Mi
+            limits:
+              cpu: 500m
+              memory: 1Gi
+          volumeMounts:
+            - name: postgresdb
+              mountPath: /var/lib/postgresql/data
+              subPath: postgres
+      volumes:
+        - name: postgresdb
+          emptyDir: {}
+# [END servicemesh_deployment_manifests_ledger_db_statefulset_ledger_db]
+---
+# [START servicemesh_deployment_manifests_ledger_db_configmap_ledger_db_config]
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ledger-db-config
+  labels:
+    app: postgres
+data:
+  POSTGRES_DB: postgresdb
+  POSTGRES_USER: admin
+  POSTGRES_PASSWORD: password
+  SPRING_DATASOURCE_URL: jdbc:postgresql://ledger-db:5432/postgresdb
+  SPRING_DATASOURCE_USERNAME: admin # should match POSTGRES_USER
+  SPRING_DATASOURCE_PASSWORD: password # should match POSTGRES_PASSWORD
+# [END servicemesh_deployment_manifests_ledger_db_configmap_ledger_db_config]
+---
+# [START servicemesh_deployment_manifests_ledger_db_service_ledger_db]
+apiVersion: v1
+kind: Service
+metadata:
+  name: ledger-db
+spec:
+  type: ClusterIP
+  selector:
+    app: ledger-db
+  ports:
+  - name: tcp
+    port: 5432
+    targetPort: 5432
+# [END servicemesh_deployment_manifests_ledger_db_service_ledger_db]
+---
+# [START servicemesh_deployment_manifests_ledger_db_virtualservice_ledger_db]
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: ledger-db
+spec:
+  hosts:
+  - ledger-db
+  tcp:
+  - route:
+    - destination:
+        host: ledger-db
+        subset: v0-5-3
+# [END servicemesh_deployment_manifests_ledger_db_virtualservice_ledger_db]
+---
+# [START servicemesh_deployment_manifests_ledger_db_destinationrule_ledger_db_destination]
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: ledger-db-destination
+spec:
+  host: ledger-db
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL
+  subsets:
+  - name: v0-5-3
+    labels:
+      version: v0.5.3
+# [END servicemesh_deployment_manifests_ledger_db_destinationrule_ledger_db_destination]
+---
+
+
+
+# Copyright 2021 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# [START servicemesh_deployment_manifests_ledger_writer_deployment_ledgerwriter]
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ledgerwriter
+spec:
+  selector:
+    matchLabels:
+      app: ledgerwriter
+  template:
+    metadata:
+      labels:
+        app: ledgerwriter
+        version: v0.5.3
+    spec:
+      serviceAccountName: default
+      terminationGracePeriodSeconds: 5
+      containers:
+      - name: ledgerwriter
+        image: gcr.io/bank-of-anthos-ci/ledgerwriter:v0.5.3
+        volumeMounts:
+        - name: publickey
+          mountPath: "/root/.ssh"
+          readOnly: true
+        env:
+        - name: VERSION
+          value: "v0.5.3"
+        - name: PORT
+          value: "8080"
+        - name: ENABLE_TRACING
+          value: "true"
+        - name: ENABLE_METRICS
+          value: "true"
+         # tell Java to obey container memory limits
+        - name: JVM_OPTS
+          value: "-XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap"
+        # service level override of log level
+        - name: LOG_LEVEL
+          value: "info"
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        envFrom:
+        - configMapRef:
+            name: environment-config
+        - configMapRef:
+            name: service-api-config
+        # add ledger-db credentials from ConfigMap
+        - configMapRef:
+            name: ledger-db-config
+        resources:
+          requests:
+            cpu: 100m
+            memory: 512Mi
+          limits:
+            cpu: 500m
+            memory: 1Gi
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 5
+          timeoutSeconds: 10
+      volumes:
+      - name: publickey
+        secret:
+          secretName: jwt-key
+          items:
+          - key: jwtRS256.key.pub
+            path: publickey
+# [END servicemesh_deployment_manifests_ledger_writer_deployment_ledgerwriter]
+---
+# [START servicemesh_deployment_manifests_ledger_writer_service_ledgerwriter]
+apiVersion: v1
+kind: Service
+metadata:
+  name: ledgerwriter
+spec:
+  type: ClusterIP
+  selector:
+    app: ledgerwriter
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+# [END servicemesh_deployment_manifests_ledger_writer_service_ledgerwriter]
+---
+# [START servicemesh_deployment_manifests_ledger_writer_virtualservice_ledgerwriter]
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: ledgerwriter
+spec:
+  hosts:
+  - ledgerwriter
+  http:
+  - route:
+    - destination:
+        host: ledgerwriter
+        subset: v0-5-3
+# [END servicemesh_deployment_manifests_ledger_writer_virtualservice_ledgerwriter]
+---
+# [START servicemesh_deployment_manifests_ledger_writer_destinationrule_ledgerwriter_destination]
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: ledgerwriter-destination
+spec:
+  host: ledgerwriter
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL
+  subsets:
+  - name: v0-5-3
+    labels:
+      version: v0.5.3
+# [END servicemesh_deployment_manifests_ledger_writer_destinationrule_ledgerwriter_destination]
+---
+
+
+# Copyright 2021 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# [START servicemesh_deployment_manifests_ledger_writer_deployment_ledgerwriter]
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ledgerwriter
+spec:
+  selector:
+    matchLabels:
+      app: ledgerwriter
+  template:
+    metadata:
+      labels:
+        app: ledgerwriter
+        version: v0.5.3
+    spec:
+      serviceAccountName: default
+      terminationGracePeriodSeconds: 5
+      containers:
+      - name: ledgerwriter
+        image: gcr.io/bank-of-anthos-ci/ledgerwriter:v0.5.3
+        volumeMounts:
+        - name: publickey
+          mountPath: "/root/.ssh"
+          readOnly: true
+        env:
+        - name: VERSION
+          value: "v0.5.3"
+        - name: PORT
+          value: "8080"
+        - name: ENABLE_TRACING
+          value: "true"
+        - name: ENABLE_METRICS
+          value: "true"
+         # tell Java to obey container memory limits
+        - name: JVM_OPTS
+          value: "-XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap"
+        # service level override of log level
+        - name: LOG_LEVEL
+          value: "info"
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        envFrom:
+        - configMapRef:
+            name: environment-config
+        - configMapRef:
+            name: service-api-config
+        # add ledger-db credentials from ConfigMap
+        - configMapRef:
+            name: ledger-db-config
+        resources:
+          requests:
+            cpu: 100m
+            memory: 512Mi
+          limits:
+            cpu: 500m
+            memory: 1Gi
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 5
+          timeoutSeconds: 10
+      volumes:
+      - name: publickey
+        secret:
+          secretName: jwt-key
+          items:
+          - key: jwtRS256.key.pub
+            path: publickey
+# [END servicemesh_deployment_manifests_ledger_writer_deployment_ledgerwriter]
+---
+# [START servicemesh_deployment_manifests_ledger_writer_service_ledgerwriter]
+apiVersion: v1
+kind: Service
+metadata:
+  name: ledgerwriter
+spec:
+  type: ClusterIP
+  selector:
+    app: ledgerwriter
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+# [END servicemesh_deployment_manifests_ledger_writer_service_ledgerwriter]
+---
+# [START servicemesh_deployment_manifests_ledger_writer_virtualservice_ledgerwriter]
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: ledgerwriter
+spec:
+  hosts:
+  - ledgerwriter
+  http:
+  - route:
+    - destination:
+        host: ledgerwriter
+        subset: v0-5-3
+# [END servicemesh_deployment_manifests_ledger_writer_virtualservice_ledgerwriter]
+---
+# [START servicemesh_deployment_manifests_ledger_writer_destinationrule_ledgerwriter_destination]
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: ledgerwriter-destination
+spec:
+  host: ledgerwriter
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL
+  subsets:
+  - name: v0-5-3
+    labels:
+      version: v0.5.3
+# [END servicemesh_deployment_manifests_ledger_writer_destinationrule_ledgerwriter_destination]
+---
+
+
+# Copyright 2021 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# [START servicemesh_deployment_manifests_ledger_writer_deployment_ledgerwriter]
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ledgerwriter
+spec:
+  selector:
+    matchLabels:
+      app: ledgerwriter
+  template:
+    metadata:
+      labels:
+        app: ledgerwriter
+        version: v0.5.3
+    spec:
+      serviceAccountName: default
+      terminationGracePeriodSeconds: 5
+      containers:
+      - name: ledgerwriter
+        image: gcr.io/bank-of-anthos-ci/ledgerwriter:v0.5.3
+        volumeMounts:
+        - name: publickey
+          mountPath: "/root/.ssh"
+          readOnly: true
+        env:
+        - name: VERSION
+          value: "v0.5.3"
+        - name: PORT
+          value: "8080"
+        - name: ENABLE_TRACING
+          value: "true"
+        - name: ENABLE_METRICS
+          value: "true"
+         # tell Java to obey container memory limits
+        - name: JVM_OPTS
+          value: "-XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap"
+        # service level override of log level
+        - name: LOG_LEVEL
+          value: "info"
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        envFrom:
+        - configMapRef:
+            name: environment-config
+        - configMapRef:
+            name: service-api-config
+        # add ledger-db credentials from ConfigMap
+        - configMapRef:
+            name: ledger-db-config
+        resources:
+          requests:
+            cpu: 100m
+            memory: 512Mi
+          limits:
+            cpu: 500m
+            memory: 1Gi
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 5
+          timeoutSeconds: 10
+      volumes:
+      - name: publickey
+        secret:
+          secretName: jwt-key
+          items:
+          - key: jwtRS256.key.pub
+            path: publickey
+# [END servicemesh_deployment_manifests_ledger_writer_deployment_ledgerwriter]
+---
+# [START servicemesh_deployment_manifests_ledger_writer_service_ledgerwriter]
+apiVersion: v1
+kind: Service
+metadata:
+  name: ledgerwriter
+spec:
+  type: ClusterIP
+  selector:
+    app: ledgerwriter
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+# [END servicemesh_deployment_manifests_ledger_writer_service_ledgerwriter]
+---
+# [START servicemesh_deployment_manifests_ledger_writer_virtualservice_ledgerwriter]
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: ledgerwriter
+spec:
+  hosts:
+  - ledgerwriter
+  http:
+  - route:
+    - destination:
+        host: ledgerwriter
+        subset: v0-5-3
+# [END servicemesh_deployment_manifests_ledger_writer_virtualservice_ledgerwriter]
+---
+# [START servicemesh_deployment_manifests_ledger_writer_destinationrule_ledgerwriter_destination]
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: ledgerwriter-destination
+spec:
+  host: ledgerwriter
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL
+  subsets:
+  - name: v0-5-3
+    labels:
+      version: v0.5.3
+# [END servicemesh_deployment_manifests_ledger_writer_destinationrule_ledgerwriter_destination]
+---
+
+
+# Copyright 2021 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# [START servicemesh_deployment_manifests_loadgenerator_deployment_loadgenerator]
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: loadgenerator
+spec:
+  selector:
+    matchLabels:
+      app: loadgenerator
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: loadgenerator
+      annotations:
+        sidecar.istio.io/rewriteAppHTTPProbers: "true"
+    spec:
+      serviceAccountName: default
+      terminationGracePeriodSeconds: 5
+      restartPolicy: Always
+      containers:
+      - name: loadgenerator
+        image: gcr.io/bank-of-anthos-ci/loadgenerator:v0.5.3
+        env:
+        - name: FRONTEND_ADDR
+          value: "frontend:80"
+        - name: USERS
+          value: "5"
+        - name: LOG_LEVEL
+          value: "error"
+        resources:
+          requests:
+            cpu: 100m
+            memory: 512Mi
+          limits:
+            cpu: 500m
+            memory: 1Gi
+# [END servicemesh_deployment_manifests_loadgenerator_deployment_loadgenerator]
+---
+
+
+# Copyright 2021 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# [START servicemesh_deployment_manifests_transaction_history_deployment_transactionhistory]
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: transactionhistory
+spec:
+  selector:
+    matchLabels:
+      app: transactionhistory
+  template:
+    metadata:
+      labels:
+        app: transactionhistory
+        version: v0.5.3
+    spec:
+      serviceAccountName: default
+      terminationGracePeriodSeconds: 5
+      containers:
+      - name: transactionhistory
+        image: gcr.io/bank-of-anthos-ci/transactionhistory:v0.5.3
+        volumeMounts:
+        - name: publickey
+          mountPath: "/root/.ssh"
+          readOnly: true
+        env:
+        - name: VERSION
+          value: "v0.5.3"
+        - name: PORT
+          value: "8080"
+        - name: ENABLE_TRACING
+          value: "true"
+        - name: ENABLE_METRICS
+          value: "true"
+        - name: POLL_MS
+          value: "100"
+        - name: CACHE_SIZE
+          value: "1000"
+        - name: CACHE_MINUTES
+          value: "60"
+        - name: HISTORY_LIMIT
+          value: "100"
+          # tell Java to obey container memory limits
+        - name: JVM_OPTS
+          value: "-XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap"
+        #- name: EXTRA_LATENCY_MILLIS
+        #  value: "5000"
+        # Valid levels are debug, info, warn, error, fatal.
+        # If no valid level is set, will default to info.
+        - name: LOG_LEVEL
+          value: "info"
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        envFrom:
+        - configMapRef:
+            name: environment-config
+        # add ledger-db credentials from ConfigMap
+        - configMapRef:
+            name: ledger-db-config
+        resources:
+          requests:
+            cpu: 100m
+            memory: 512Mi
+          limits:
+            cpu: 500m
+            memory: 1Gi
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 5
+          timeoutSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /healthy
+            port: 8080
+          initialDelaySeconds: 120
+          periodSeconds: 5
+          timeoutSeconds: 10
+      volumes:
+      - name: publickey
+        secret:
+          secretName: jwt-key
+          items:
+          - key: jwtRS256.key.pub
+            path: publickey
+# [END servicemesh_deployment_manifests_transaction_history_deployment_transactionhistory]
+---
+# [START servicemesh_deployment_manifests_transaction_history_service_transactionhistory]
+apiVersion: v1
+kind: Service
+metadata:
+  name: transactionhistory
+spec:
+  type: ClusterIP
+  selector:
+    app: transactionhistory
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+# [END servicemesh_deployment_manifests_transaction_history_service_transactionhistory]
+---
+# [START servicemesh_deployment_manifests_transaction_history_virtualservice_transactionhistory]
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: transactionhistory
+spec:
+  hosts:
+  - transactionhistory
+  http:
+  - route:
+    - destination:
+        host: transactionhistory
+        subset: v0-5-3
+# [END servicemesh_deployment_manifests_transaction_history_virtualservice_transactionhistory]
+---
+# [START servicemesh_deployment_manifests_transaction_history_destinationrule_transactionhistory_destination]
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: transactionhistory-destination
+spec:
+  host: transactionhistory
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL
+  subsets:
+  - name: v0-5-3
+    labels:
+      version: v0.5.3
+# [END servicemesh_deployment_manifests_transaction_history_destinationrule_transactionhistory_destination]
+---
+
+
+
+# Copyright 2021 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# [START servicemesh_deployment_manifests_userservice_deployment_userservice]
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: userservice
+spec:
+  selector:
+    matchLabels:
+      app: userservice
+  template:
+    metadata:
+      labels:
+        app: userservice
+        version: v0.5.3
+    spec:
+      serviceAccountName: default
+      terminationGracePeriodSeconds: 5
+      containers:
+      - name: userservice
+        image: gcr.io/bank-of-anthos-ci/userservice:v0.5.3
+        volumeMounts:
+        - name: keys
+          mountPath: "/root/.ssh"
+          readOnly: true
+        ports:
+        - name: http-server
+          containerPort: 8080
+        env:
+        - name: VERSION
+          value: "v0.5.3"
+        - name: PORT
+          value: "8080"
+        - name: ENABLE_TRACING
+          value: "true"
+        - name: TOKEN_EXPIRY_SECONDS
+          value: "3600"
+        - name: PRIV_KEY_PATH
+          value: "/root/.ssh/privatekey"
+        # Valid levels are debug, info, warning, error, critical. If no valid level is set, gunicorn will default to info.
+        - name: LOG_LEVEL
+          value: "info"
+        envFrom:
+        - configMapRef:
+            name: environment-config
+        - configMapRef:
+            name: accounts-db-config
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 10
+        resources:
+          requests:
+            cpu: 100m
+            memory: 64Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+      volumes:
+      - name: keys
+        secret:
+          secretName: jwt-key
+          items:
+          - key: jwtRS256.key
+            path: privatekey
+          - key: jwtRS256.key.pub
+            path: publickey
+# [END servicemesh_deployment_manifests_userservice_deployment_userservice]
+---
+# [START servicemesh_deployment_manifests_userservice_service_userservice]
+apiVersion: v1
+kind: Service
+metadata:
+  name: userservice
+spec:
+  type: ClusterIP
+  selector:
+    app: userservice
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+# [END servicemesh_deployment_manifests_userservice_service_userservice]
+---
+# [START servicemesh_deployment_manifests_userservice_virtualservice_userservice]
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: userservice
+spec:
+  hosts:
+  - userservice
+  http:
+  - route:
+    - destination:
+        host: userservice
+        subset: v0-5-3
+# [END servicemesh_deployment_manifests_userservice_virtualservice_userservice]
+---
+# [START servicemesh_deployment_manifests_userservice_destinationrule_userservice_destination]
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: userservice-destination
+spec:
+  host: userservice
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL
+  subsets:
+  - name: v0-5-3
+    labels:
+      version: v0.5.3
+# [END servicemesh_deployment_manifests_userservice_destinationrule_userservice_destination]
+---
