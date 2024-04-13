@@ -83,7 +83,7 @@ data:
 # [END servicemesh_deployment_manifests_accounts_db_configmap_accounts_db_config]
 ---
 # [START servicemesh_deployment_manifests_accounts_db_virtualservice_accounts_db]
-apiVersion: networking.istio.io/v1beta1
+apiVersion: networking.istio.io/v1
 kind: VirtualService
 metadata:
   name: accounts-db
@@ -98,7 +98,7 @@ spec:
 # [END servicemesh_deployment_manifests_accounts_db_virtualservice_accounts_db]
 ---
 # [START servicemesh_deployment_manifests_accounts_db_destinationrule_accounts_db_destination]
-apiVersion: networking.istio.io/v1beta1
+apiVersion: networking.istio.io/v1
 kind: DestinationRule
 metadata:
   name: accounts-db-destination
@@ -130,7 +130,7 @@ spec:
 # limitations under the License.
 
 # [START servicemesh_deployment_manifests_asm_gateway_gateway_bank_of_anthos_gateway]
-apiVersion: networking.istio.io/v1beta1
+apiVersion: networking.istio.io/v1
 kind: Gateway
 metadata:
   name: bank-of-anthos-gateway
@@ -263,7 +263,7 @@ spec:
 # [END servicemesh_deployment_manifests_balance_reader_service_balancereader]
 ---
 # [START servicemesh_deployment_manifests_balance_reader_virtualservice_balancereader]
-apiVersion: networking.istio.io/v1beta1
+apiVersion: networking.istio.io/v1
 kind: VirtualService
 metadata:
   name: balancereader
@@ -278,7 +278,7 @@ spec:
 # [END servicemesh_deployment_manifests_balance_reader_virtualservice_balancereader]
 ---
 # [START servicemesh_deployment_manifests_balance_reader_destinationrule_balancereader_destination]
-apiVersion: networking.istio.io/v1beta1
+apiVersion: networking.istio.io/v1
 kind: DestinationRule
 metadata:
   name: balancereader-destination
@@ -440,7 +440,7 @@ spec:
 # [END servicemesh_deployment_manifests_contacts_service_contacts]
 ---
 # [START servicemesh_deployment_manifests_contacts_virtualservice_contacts]
-apiVersion: networking.istio.io/v1beta1
+apiVersion: networking.istio.io/v1
 kind: VirtualService
 metadata:
   name: contacts
@@ -455,7 +455,7 @@ spec:
 # [END servicemesh_deployment_manifests_contacts_virtualservice_contacts]
 ---
 # [START servicemesh_deployment_manifests_contacts_destinationrule_contacts_destination]
-apiVersion: networking.istio.io/v1beta1
+apiVersion: networking.istio.io/v1
 kind: DestinationRule
 metadata:
   name: contacts-destination
@@ -564,7 +564,7 @@ spec:
 # [END servicemesh_deployment_manifests_contacts_service_contacts]
 ---
 # [START servicemesh_deployment_manifests_contacts_virtualservice_contacts]
-apiVersion: networking.istio.io/v1beta1
+apiVersion: networking.istio.io/v1
 kind: VirtualService
 metadata:
   name: contacts
@@ -579,7 +579,7 @@ spec:
 # [END servicemesh_deployment_manifests_contacts_virtualservice_contacts]
 ---
 # [START servicemesh_deployment_manifests_contacts_destinationrule_contacts_destination]
-apiVersion: networking.istio.io/v1beta1
+apiVersion: networking.istio.io/v1
 kind: DestinationRule
 metadata:
   name: contacts-destination
@@ -688,7 +688,7 @@ spec:
 # [END servicemesh_deployment_manifests_ledger_db_service_ledger_db]
 ---
 # [START servicemesh_deployment_manifests_ledger_db_virtualservice_ledger_db]
-apiVersion: networking.istio.io/v1beta1
+apiVersion: networking.istio.io/v1
 kind: VirtualService
 metadata:
   name: ledger-db
@@ -703,7 +703,7 @@ spec:
 # [END servicemesh_deployment_manifests_ledger_db_virtualservice_ledger_db]
 ---
 # [START servicemesh_deployment_manifests_ledger_db_destinationrule_ledger_db_destination]
-apiVersion: networking.istio.io/v1beta1
+apiVersion: networking.istio.io/v1
 kind: DestinationRule
 metadata:
   name: ledger-db-destination
@@ -825,7 +825,7 @@ spec:
 # [END servicemesh_deployment_manifests_ledger_writer_service_ledgerwriter]
 ---
 # [START servicemesh_deployment_manifests_ledger_writer_virtualservice_ledgerwriter]
-apiVersion: networking.istio.io/v1beta1
+apiVersion: networking.istio.io/v1
 kind: VirtualService
 metadata:
   name: ledgerwriter
@@ -840,7 +840,7 @@ spec:
 # [END servicemesh_deployment_manifests_ledger_writer_virtualservice_ledgerwriter]
 ---
 # [START servicemesh_deployment_manifests_ledger_writer_destinationrule_ledgerwriter_destination]
-apiVersion: networking.istio.io/v1beta1
+apiVersion: networking.istio.io/v1
 kind: DestinationRule
 metadata:
   name: ledgerwriter-destination
@@ -961,7 +961,7 @@ spec:
 # [END servicemesh_deployment_manifests_ledger_writer_service_ledgerwriter]
 ---
 # [START servicemesh_deployment_manifests_ledger_writer_virtualservice_ledgerwriter]
-apiVersion: networking.istio.io/v1beta1
+apiVersion: networking.istio.io/v1
 kind: VirtualService
 metadata:
   name: ledgerwriter
@@ -976,7 +976,7 @@ spec:
 # [END servicemesh_deployment_manifests_ledger_writer_virtualservice_ledgerwriter]
 ---
 # [START servicemesh_deployment_manifests_ledger_writer_destinationrule_ledgerwriter_destination]
-apiVersion: networking.istio.io/v1beta1
+apiVersion: networking.istio.io/v1
 kind: DestinationRule
 metadata:
   name: ledgerwriter-destination
@@ -1097,7 +1097,7 @@ spec:
 # [END servicemesh_deployment_manifests_ledger_writer_service_ledgerwriter]
 ---
 # [START servicemesh_deployment_manifests_ledger_writer_virtualservice_ledgerwriter]
-apiVersion: networking.istio.io/v1beta1
+apiVersion: networking.istio.io/v1
 kind: VirtualService
 metadata:
   name: ledgerwriter
@@ -1112,7 +1112,7 @@ spec:
 # [END servicemesh_deployment_manifests_ledger_writer_virtualservice_ledgerwriter]
 ---
 # [START servicemesh_deployment_manifests_ledger_writer_destinationrule_ledgerwriter_destination]
-apiVersion: networking.istio.io/v1beta1
+apiVersion: networking.istio.io/v1
 kind: DestinationRule
 metadata:
   name: ledgerwriter-destination
@@ -1319,7 +1319,7 @@ spec:
 # [END servicemesh_deployment_manifests_transaction_history_virtualservice_transactionhistory]
 ---
 # [START servicemesh_deployment_manifests_transaction_history_destinationrule_transactionhistory_destination]
-apiVersion: networking.istio.io/v1beta1
+apiVersion: networking.istio.io/v1
 kind: DestinationRule
 metadata:
   name: transactionhistory-destination
@@ -1438,7 +1438,7 @@ spec:
 # [END servicemesh_deployment_manifests_userservice_service_userservice]
 ---
 # [START servicemesh_deployment_manifests_userservice_virtualservice_userservice]
-apiVersion: networking.istio.io/v1beta1
+apiVersion: networking.istio.io/v1
 kind: VirtualService
 metadata:
   name: userservice
@@ -1453,7 +1453,7 @@ spec:
 # [END servicemesh_deployment_manifests_userservice_virtualservice_userservice]
 ---
 # [START servicemesh_deployment_manifests_userservice_destinationrule_userservice_destination]
-apiVersion: networking.istio.io/v1beta1
+apiVersion: networking.istio.io/v1
 kind: DestinationRule
 metadata:
   name: userservice-destination
