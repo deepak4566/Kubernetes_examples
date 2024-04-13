@@ -4,6 +4,11 @@ metadata:
   name: identityproviders.security.cloud.google.com
 spec:
   group: security.cloud.google.com
+  names:
+    kind: IdentityProvider
+    listKind: IdentityProviderList
+    plural: identityproviders
+    singular: identityprovider
   scope: Cluster
   versions:
     - name: v1alpha1
@@ -13,57 +18,26 @@ spec:
         openAPIV3Schema:
           type: object
           properties:
-            apiVersion:
-              type: string
-              description: 'APIVersion defines the versioned schema of this representation of an object.'
-            kind:
-              type: string
-              description: 'Kind is a string value representing the REST resource this object represents.'
-            metadata:
-              type: object
             spec:
               type: object
-              description: IdentityProviderSpec defines the desired state of IdentityProvider.
               properties:
                 authentication:
                   type: object
-                  description: Authentication specifies how to authenticate credential.
                   properties:
                     type:
                       type: string
-                      description: AuthenticationType describes authentication type.
-                      enum:
-                        - OIDC
                     oidc:
                       type: object
-                      description: OIDCAuthSpec defines method to authenticate OIDC credential.
                       properties:
                         issuerUri:
                           type: string
-                          description: IssuerURI defines URI of issuer for the OIDC credential.
                 serviceAccount:
                   type: string
-                  description: ServiceAccount specifies how to extract identity from authenticated attributes.
             status:
               type: object
-              description: IdentityProviderStatus defines the observed state of IdentityProvider.
               properties:
                 lastObservedTime:
                   type: string
                   format: date-time
-                  nullable: true
-                  description: LastObservedTime is the last time this status is observed.
-          required:
-            - apiVersion
-            - kind
-            - metadata
-            - spec
-            - status
       subresources:
         status: {}
-  names:
-    kind: IdentityProvider
-    listKind: IdentityProviderList
-    plural: identityproviders
-    singular: identityprovider
-  preserveUnknownFields: true
