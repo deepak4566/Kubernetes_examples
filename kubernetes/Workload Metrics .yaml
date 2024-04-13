@@ -350,7 +350,7 @@ spec:
 # Note that this PodMonitor is in the monitoring.gke.io domain,
 # rather than the monitoring.coreos.com domain used with the
 # Prometheus Operator
-apiVersion: monitoring.gke.io/v1alpha1
+apiVersion: monitoring.gke.io/v1
 kind: PodMonitor
 metadata:
   name: workload-metrics-podmon
