@@ -1,0 +1,21 @@
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: wasm
+spec:
+  type: middleware.http.wasm
+  version: v1
+  metadata:
+  - name: url
+    value: "file://wasm/main.wasm"
+---
+apiVersion: dapr.io/v1alpha1
+kind: Configuration
+metadata:
+  name: appconfig
+spec:
+  httpPipeline:
+    handlers:
+    - name: wasm
+      type: middleware.http.wasm
+    
