@@ -1,0 +1,187 @@
+kind: Secret
+metadata:
+  name: csharp-function-subscriber
+  namespace: default
+data:
+  AzureWebJobsStorage: CONNECTION_STRING_B64
+apiVersion: v1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: csharp-function-subscriber
+  labels:
+    app: csharp-function-subscriber
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: csharp-function-subscriber
+  template:
+    metadata:
+      labels:
+        app: csharp-function-subscriber
+      annotations:
+        dapr.io/enabled: "true"
+        dapr.io/app-id: "csharp-function-subscriber"
+        dapr.io/app-port: "80"
+    spec:
+      containers:
+      - name: csharp-function-subscriber
+        image: IMAGE_NAME
+        ports:
+        - containerPort: 80
+        imagePullPolicy: Always
+
+---
+
+data:
+  AzureWebJobsStorage: CONNECTION_STRING_B64
+  FUNCTIONS_WORKER_RUNTIME: bm9kZQ==
+apiVersion: v1
+kind: Secret
+metadata:
+  name: javascript-function-subscriber
+  namespace: default
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: javascript-function-subscriber
+  namespace: default
+  labels:
+    app: javascript-function-subscriber
+  annotations:
+    osiris.deislabs.io/enabled: true
+    osiris.deislabs.io/minReplicas: 1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: javascript-function-subscriber
+  template:
+    metadata:
+      labels:
+        app: javascript-function-subscriber
+      annotations:
+        dapr.io/enabled: "true"
+        dapr.io/app-id: "javascript-function-subscriber"
+        dapr.io/app-port: "80"
+    spec:
+      containers:
+      - name: javascript-function-subscriber
+        image: IMAGE_NAME
+        ports:
+        - containerPort: 80
+        env:
+        - name: AzureFunctionsJobHost__functions__0
+          value: MyTopic
+        - name: AzureFunctionsJobHost__functions__1
+          value: Subscribe
+        envFrom:
+        - secretRef:
+            name: javascript-function-subscriber
+---
+
+kind: Secret
+metadata:
+  name: python-function-publisher
+  namespace: default
+data:
+  AzureWebJobsStorage: CONNECTION_STRING_B64
+  FUNCTIONS_WORKER_RUNTIME: cHl0aG9u
+apiVersion: v1
+---
+
+kind: Service
+apiVersion: v1
+metadata:
+  name: python-function-publisher
+  labels:
+    app: python-function-publisher
+spec:
+  selector:
+    app: python-function-publisher
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 80
+  type: LoadBalancer
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: python-function-publisher
+  labels:
+    app: python-function-publisher
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: python-function-publisher
+  template:
+    metadata:
+      labels:
+        app: python-function-publisher
+      annotations:
+        dapr.io/enabled: "true"
+        dapr.io/app-id: "python-function-publisher"
+        dapr.io/app-port: "80"
+    spec:
+      containers:
+      - name: python-function-publisher
+        image: IMAGE_NAME
+        ports:
+        - containerPort: 80
+        imagePullPolicy: Always
+        envFrom:
+        - secretRef:
+            name: python-function-publisher
+---
+apiVersion: keda.k8s.io/v1alpha1
+kind: ScaledObject
+metadata:
+  name: python-function-publisher
+  namespace: default
+  labels:
+    deploymentName: python-function-publisher
+spec:
+  scaleTargetRef:
+    deploymentName: python-function-publisher
+  triggers:
+  - type: azure-queue
+    metadata:
+      name: myQueueItem
+      type: queueTrigger
+      direction: in
+      queueName: items
+      queueLength: "1"
+      connection: AzureWebJobsStorage
+---
+
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: statestore
+spec:
+  type: state.redis
+  version: v1
+  metadata:
+  - name: "redisHost"
+    value: "REPLACE_HOST"
+  - name: "redisPassword"
+    value: "REPLACE_SECRET"
+---
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: messagebus
+spec:
+  type: pubsub.redis
+  version: v1
+  metadata:
+  - name: "redisHost"
+    value: "REPLACE_HOST"
+  - name: "redisPassword"
+    value: "REPLACE_SECRET"
