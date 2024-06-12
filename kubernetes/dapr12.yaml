@@ -139,7 +139,7 @@ spec:
         - secretRef:
             name: python-function-publisher
 ---
-apiVersion: keda.k8s.io/v1alpha1
+apiVersion: keda.k8s.io/v1
 kind: ScaledObject
 metadata:
   name: python-function-publisher
@@ -160,7 +160,7 @@ spec:
       connection: AzureWebJobsStorage
 ---
 
-apiVersion: dapr.io/v1alpha1
+apiVersion: dapr.io/v1
 kind: Component
 metadata:
   name: statestore
